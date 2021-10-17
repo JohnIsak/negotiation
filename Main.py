@@ -1,20 +1,26 @@
+import numpy as np
+
 import Negotiation
 import Random_agent
 import Reinforce_agent
 import torch
 
-a = Reinforce_agent
-input = torch.arange(1, 14)
-print(input)
+a = Reinforce_agent.Reinforce_agent()
+input = torch.arange(0, 1.2, 0.1)
+a.act(input, np.array([4, 3, 5]))
 
 game = Negotiation.NegotiationGame()
-agents = [Random_agent.RandomAgent(game.state.item_pool), Random_agent.RandomAgent(game.state.item_pool)]
+agents = [Reinforce_agent.Reinforce_agent(), Reinforce_agent.Reinforce_agent()]
 
-proposal, agreement = agents[0].act()
-state, rewards, curr_player = game.apply_action(proposal, None, agreement)
+state_coded = game.state.generate_processed_state()
+agreement, proposal = agents[0].act(state_coded, game.state.item_pool)
+state, rewards = game.apply_action(proposal, None, agreement)
 
 while not state.is_terminal:
-    proposal, agreement = agents[curr_player].act()
-    state, rewards, curr_player = game.apply_action(proposal, None, agreement)
+    state_coded = state.generate_processed_state()
+    agreement, proposal = agents[state.curr_player].act(state_coded, state.item_pool)
+    print(agreement)
+    state, rewards = game.apply_action(proposal, None, agreement)
 
+print(rewards)
 #print(state.item_pool, state.hidden_utils, state.last_proposal, rewards, curr_player)
