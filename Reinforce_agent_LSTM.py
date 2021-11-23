@@ -28,7 +28,6 @@ class Reinforce_agent(nn.Module):
         return x
 
     def act(self, state, agent):
-        state = torch.reshape(state[agent], (1, 1, -1))
         out = self.forward(state, agent)
         out = out[0, 0]
         #print(out)

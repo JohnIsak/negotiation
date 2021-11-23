@@ -38,22 +38,17 @@ def plot(rewards_saved):
     plt.show()
     plt.savefig("plot" + str(0))
 
-
-
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 agents = [Reinforce_agent_LSTM.Reinforce_agent()]
 agents[0] = agents[0].to(device=device)
 optimizers = [torch.optim.Adam(agents[0].parameters(), lr=0.0001, weight_decay=0.0001)]
-torch.autograd.set_detect_anomaly(True)
+#torch.autograd.set_detect_anomaly(True)
 batch_size = 1
 num_iterations = 500_000
-print("asd1")
 
 rewards_saved = torch.zeros((num_iterations, 2), device=device)
 loss = torch.tensor(0.0, device=device)
-print("asd1")
-
 
 for i in range(num_iterations):
     # Play an episode
@@ -61,14 +56,13 @@ for i in range(num_iterations):
     state = game.state
     log_probs = [[], []]
     while not state.is_terminal:
-        state_coded = state.state
+        state_coded = state.generate_processed_state()
         agreement, proposal, log_prob = agents[0].act(state_coded, state.curr_player)
         log_probs[state.curr_player].append(log_prob)
         state, rewards = game.apply_action(proposal, None, agreement)
     for agent in agents:
         agent.hidden_a = None
         agent.hidden_b = None
-    print(log_probs)
     # Backprop
     if log_probs[0]:
         loss1 = torch.cat(log_probs[0]).sum()
@@ -83,7 +77,8 @@ for i in range(num_iterations):
     loss.backward()
     optimizers[0].step()
     loss = torch.tensor(0.0, device=device)
-    print(rewards)
+    if (i+1)%10 == 0:
+        print(rewards)
     rewards_saved[i] = rewards
 torch.save(agents[0], "agent0_self")
 
