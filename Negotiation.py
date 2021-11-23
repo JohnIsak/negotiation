@@ -18,7 +18,7 @@ class NegotiationState:
         self.last_utterance = None
         self.next_last_proposal = None
         self.turn = 0
-        self.curr_player = 0
+        self.curr_player = np.random.randint(0, 2)
         self.max_turns = np.random.randint(5, 11)
 
     def generate_processed_state(self):
@@ -47,6 +47,14 @@ class NegotiationGame:
         max_self_interest[0] = np.sum(self.state.hidden_utils[0] * self.state.item_pool)
         max_self_interest[1] = np.sum(self.state.hidden_utils[1] * self.state.item_pool)
         return max_self_interest
+
+    def find_best_solution(self):
+        best_proposal = np.zeros(3)
+        for i in range(len(best_proposal)):
+            if self.state.hidden_utils[self.state.curr_player][i] \
+                    > self.state.hidden_utils[(self.state.curr_player+1) % 2][i]:
+                best_proposal[i] = self.state.item_pool[i]
+        return best_proposal
 
     def is_legal_proposal(self, proposal):
         return np.sum(np.less_equal(proposal, self.state.item_pool)) == len(proposal)
@@ -77,9 +85,12 @@ class NegotiationGame:
         other_player = (self.state.curr_player + 1) % 2
         rewards = np.zeros(2)
         maximum_rewards = self._find_max_self_interest()
-        rewards[other_player] = np.sum(self.state.last_proposal * self.state.hidden_utils[other_player]) \
-            / maximum_rewards[other_player]
-        rewards[self.state.curr_player] = np.sum((self.state.item_pool - self.state.last_proposal)
-                                           * self.state.hidden_utils[self.state.curr_player]) / \
-            maximum_rewards[self.state.curr_player]
+
+        # Rewards til spilleren som kom med proposalet
+        # Det er spilleren som er current player.
+        # curr-player1-> proposal -> curr-player2-> acceptance -> curr-player1
+        rewards[self.state.curr_player] = np.sum(self.state.last_proposal * self.state.hidden_utils[self.state.curr_player]) \
+            / maximum_rewards[self.state.curr_player]
+        rewards[other_player] = np.sum((self.state.item_pool - self.state.last_proposal)
+                                           * self.state.hidden_utils[other_player]) / maximum_rewards[other_player]
         return rewards
