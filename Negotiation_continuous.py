@@ -20,13 +20,13 @@ class NegotiationState:
         self.max_turns = 20
 
     def generate_processed_state(self):
-        state = torch.zeros(6, dtype=torch.float, device=device)
+        state = torch.zeros(10, dtype=torch.float, device=device)
         state[0:3] = self.hidden_utils[self.curr_player]/10
         # print(type(self.last_proposal))
-        if self.last_proposal is not None:
-            state[3:6] = self.last_proposal
-        # state[6:9] = self.next_last_proposal/5 if self.next_last_proposal is not None else state[9:12]
-        # state[6] = self.turn/20
+        # if self.last_proposal is not None:
+        #    state[3:6] = self.last_proposal
+        state[6:9] = self.last_utterance if self.last_utterance is not None else state[6:9]
+        state[9] = self.turn/20
         # state = torch.tensor(state, dtype=torch.float, device=device)
         state = torch.reshape(state, (1, 1, -1))
         return state
@@ -49,14 +49,12 @@ class NegotiationGame:
         return max_self_interest
 
     def find_best_solution(self):
-        best_proposal = np.zeros(3)
+        best_proposal = torch.zeros(3, device=device)
         for i in range(len(best_proposal)):
             if self.state.hidden_utils[self.state.curr_player][i] \
                     > self.state.hidden_utils[(self.state.curr_player+1) % 2][i]:
                 best_proposal[i] = 1
         return best_proposal
-
-
 
     def apply_action(self, proposal, utterance, agreement):
         self.state.turn += 1
@@ -77,9 +75,9 @@ class NegotiationGame:
         self.state.last_utterance = utterance
         return self.state, torch.zeros(2, device=device)
 
-    def find_rewards(self):
+    def find_rewards(self, proposal=None):
         other_player = (self.state.curr_player + 1) % 2
-        last_proposal = self.state.last_proposal
+        last_proposal = self.state.last_proposal if proposal is None else proposal
         rewards = torch.zeros(2, device=device)
         maximum_rewards = self._find_max_self_interest()
 
@@ -90,8 +88,8 @@ class NegotiationGame:
             / maximum_rewards[self.state.curr_player]
         rewards[other_player] = torch.sum((torch.ones(3, device=device) - last_proposal)
                                            * self.state.hidden_utils[other_player]) / maximum_rewards[other_player]
-        a = rewards[self.state.curr_player]
-        rewards[self.state.curr_player] += 0.0*rewards[other_player]
-        rewards[other_player] += 0.0*a
-        rewards -= 0.05*self.state.turn
+        a = rewards[self.state.curr_player].clone().detach()
+        rewards[self.state.curr_player] += 1*rewards[other_player]
+        rewards[other_player] += 1*a
+        rewards -= 0.01*self.state.turn
         return rewards
