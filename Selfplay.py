@@ -65,10 +65,10 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 
 agents = [Reinforce_agent_LSTM.Reinforce_agent()]
 agents[0] = agents[0].to(device=device)
-optimizers = [torch.optim.Adam(agents[0].parameters(), lr=0.0001, weight_decay=0.001)]
+optimizers = [torch.optim.Adam(agents[0].parameters(), lr=0.001, weight_decay=0.001)]
 #torch.autograd.set_detect_anomaly(True)
-batch_size = 1
-num_iterations = 200_000
+batch_size = 1024
+num_iterations = 500_000
 
 starting_player = torch.zeros(num_iterations)
 rewards_saved = torch.zeros((num_iterations, 2), device=device)
