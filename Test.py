@@ -2,6 +2,11 @@ import torch
 import numpy as np
 import pandas as pd
 
+
+a = np.array([[1,2,3],[1,2,3],[1,2,3]])
+a[0] = a[0, np.array([1,2,0])]
+print(a)
+
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 num_players = 3
 
