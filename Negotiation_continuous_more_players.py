@@ -32,7 +32,7 @@ class NegotiationState:
         state[0:3] = self.hidden_utils[self.curr_player]/10
         # print(type(self.last_proposal))
         # if len(self.proposals) > 0:
-        #    state[3:6] = self.proposals[-1]
+        #     state[3:6] = self.proposals[-1]
         state[6:9] = self.last_utterance if self.last_utterance is not None else state[6:9]
         # state[9:12] = self.remainder
         state[12] = self.turn/20
@@ -45,6 +45,7 @@ class NegotiationGame:
     def __init__(self, num_players):
         self.state = NegotiationState(num_players)
 
+    # Ikke laget for flere spillere enda.
     def _find_max_utility(self):
         max_utils = [self.state.hidden_utils[0, i] if self.state.hidden_utils[0, i] > self.state.hidden_utils[1, i]
                      else self.state.hidden_utils[1, i] for i in range(len(self.state.hidden_utils[0]))]
@@ -109,7 +110,5 @@ class NegotiationGame:
             mask = np.ones(self.state.num_players, dtype=bool)
             mask[j] = False
             rewards[j] += torch.sum(1*a[mask])
-        #rewards[self.state.curr_player] += 1*rewards[other_player]
-        #rewards[other_player] += 1*a
-        rewards -= 0.05*self.state.turn
+        rewards -= 0.01*self.state.turn
         return rewards

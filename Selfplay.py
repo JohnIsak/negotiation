@@ -6,10 +6,12 @@ import torch
 import matplotlib.pyplot as plt
 import pandas as pd
 
+
 def reverse_order(rewards_saved, starting_player):
     for i in range(len(rewards_saved)):
         rewards_saved[i] = rewards_saved[i, starting_player[i]]
     return rewards_saved
+
 
 def plot(rewards_saved, pos_reward):
     avg = pd.DataFrame(rewards_saved[:, 0])
@@ -95,7 +97,7 @@ for i in range(num_iterations):
     for j in range(len(log_probs)):
         if log_probs[j]:
             loss_ = torch.cat(log_probs[j]).sum()
-            loss_ *= rewards[j] - 0.4
+            loss_ *= rewards[j] - 1
             loss += loss_
     if (i+1) % batch_size == 0:
         loss = -loss

@@ -12,7 +12,7 @@ class Reinforce_agent(nn.Module):
     def __init__(self, n_players):
         super(Reinforce_agent, self).__init__()
         self.LSTM = nn.LSTM(13, 100, batch_first=True)
-        # self.linear1 = nn.Linear(100, 100)
+        self.linear1 = nn.Linear(100, 100)
         self.linear2 = nn.Linear(100, 14)
         self.hidden = np.empty(n_players, dtype=tuple)
 
@@ -22,7 +22,7 @@ class Reinforce_agent(nn.Module):
         #print(self.hidden[agent])
         self.hidden[agent] = hidden
         #print(self.hidden[agent])
-        # x = self.linear1(x)
+        x = self.linear1(x)
         x = F.leaky_relu(x)
         x = self.linear2(x)
         return x
