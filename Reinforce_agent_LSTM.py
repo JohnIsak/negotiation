@@ -41,7 +41,7 @@ class Reinforce_agent(nn.Module):
         distributions = torch.distributions.normal.Normal(mean, std) #STD should be positive
         proposal = distributions.sample()
         log_prob = distributions.log_prob(proposal)
-        proposal[0:4] = F.sigmoid(proposal[0:4])
+        proposal[0:4] = torch.sigmoid(proposal[0:4])
 
         #print(log_prob)
         # proposal = proposal.cpu().detach().numpy()
