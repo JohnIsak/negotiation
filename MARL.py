@@ -1,6 +1,7 @@
 import numpy as np
 import Negotiation_continuous_more_players as Negotiation_continuous
 import Reinforce_agent_LSTM
+import Critic
 import torch
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -69,12 +70,14 @@ def plot(rewards_saved, pos_reward):
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 num_agents = 2
 agents = [Reinforce_agent_LSTM.Reinforce_agent(num_agents), Reinforce_agent_LSTM.Reinforce_agent(num_agents)]
+critic = Critic.Critic(2)
+
 agents[0] = agents[0].to(device=device)
 agents[1] = agents[1].to(device=device)
-optimizers = [torch.optim.Adam(agents[0].parameters(), lr=0.0001, weight_decay=0.0001),
-              torch.optim.Adam(agents[1].parameters(), lr=0.0001, weight_decay=0.0001)]
+optimizers = [torch.optim.Adam(agents[0].parameters(), lr=0.001, weight_decay=0.0001),
+              torch.optim.Adam(agents[1].parameters(), lr=0.001, weight_decay=0.0001)]
 torch.autograd.set_detect_anomaly(True)
-batch_size = 1
+batch_size = 128
 
 num_iterations = 500_000
 
@@ -99,7 +102,8 @@ for i in range(num_iterations):
     # Backprop
     for j in range(len(log_probs)):
         if log_probs[j]:
-            losses.append(torch.cat(log_probs[j]).sum())
+            losses.append(torch.cat(log_probs[j]).sum()) if len(losses) < num_agents \
+                else torch.cat(log_probs[j]).sum()
             losses[j] *= rewards[j] - 1
     if (i+1) % batch_size == 0:
         for j, loss in enumerate(losses):
