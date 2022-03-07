@@ -70,14 +70,16 @@ def plot(rewards_saved, pos_reward):
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 num_agents = 2
 agents = [Reinforce_agent_LSTM.Reinforce_agent(num_agents), Reinforce_agent_LSTM.Reinforce_agent(num_agents)]
-critic = Critic.Critic(2)
+critic = Critic.Critic()
+critic = critic.to(device=device)
 
 agents[0] = agents[0].to(device=device)
 agents[1] = agents[1].to(device=device)
-optimizers = [torch.optim.Adam(agents[0].parameters(), lr=0.001, weight_decay=0.0001),
-              torch.optim.Adam(agents[1].parameters(), lr=0.001, weight_decay=0.0001)]
+optimizers = [torch.optim.Adam(agents[0].parameters(), lr=0.0001, weight_decay=0.0001),
+              torch.optim.Adam(agents[1].parameters(), lr=0.0001, weight_decay=0.0001)]
+optimizer_critic = torch.optim.Adam(critic.parameters(), lr=0.001)
 torch.autograd.set_detect_anomaly(True)
-batch_size = 128
+batch_size = 1
 
 num_iterations = 500_000
 
@@ -94,20 +96,30 @@ for i in range(num_iterations):
     log_probs = [[], []]
     while not state.is_terminal:
         state_coded = state.generate_processed_state()
+        v_prev = critic(state_coded)
         agreement, proposal, log_prob, utterance = agents[state.curr_player].act(state_coded, state.curr_player)
         log_probs[state.curr_player].append(log_prob)
         state, rewards = game.apply_action(proposal, utterance, agreement)
         rewards = rewards / game.find_rewards([game.best_collective_proposal()])
         rewards -= 0.01 * state.turn
+        delta = rewards - v_prev
+        loss_critic = (rewards[0] - v_prev)**2
+        #print(delta)
     # Backprop
     for j in range(len(log_probs)):
         if log_probs[j]:
-            losses.append(torch.cat(log_probs[j]).sum()) if len(losses) < num_agents \
-                else torch.cat(log_probs[j]).sum()
-            losses[j] *= rewards[j] - 1
+            if len(losses) < num_agents:
+                losses.append(torch.cat(log_probs[j]).sum())
+            else:
+                losses[j] = torch.cat(log_probs[j]).sum()
+            losses[j] *= delta[j].clone().detach()
     if (i+1) % batch_size == 0:
+        optimizer_critic.zero_grad()
+        loss_critic.backward()
+        optimizer_critic.step()
+        critic.hidden = None
         for j, loss in enumerate(losses):
-            loss = -losses[j]
+            loss = -loss
             optimizers[j].zero_grad()
             loss.backward()
             optimizers[j].step()
@@ -115,7 +127,7 @@ for i in range(num_iterations):
             agent.hidden = np.empty(num_agents, dtype=tuple)
         losses = []
     if (i+1) % 100 == 0:
-        print((i+1), rewards)
+        print((i+1), rewards, delta)
         # print("Utterance", game.state.last_utterance, "Hidden utils", game.state.hidden_utils[game.state.curr_player])
     # rewards_saved[i] = rewards
     rewards_saved[i] = rewards

@@ -23,17 +23,16 @@ class NegotiationState:
         self.last_utterance = None
         self.turn = 0
         self.curr_player = np.random.randint(0, self.num_players)
-        self.max_turns = 20
+        self.max_turns = 10
         self.agreement_counter = 0
         self.remainder = torch.ones(3, device=device)
-
 
     def generate_processed_state(self):
         state = torch.zeros(13, dtype=torch.float, device=device)
         state[0:3] = self.hidden_utils[self.curr_player]/10
         # print(type(self.last_proposal))
-        # if len(self.proposals) > 0:
-        #     state[3:6] = self.proposals[-1]
+        #if len(self.proposals) > 0:
+        #    state[3:6] = self.proposals[-1]
         state[6:9] = self.last_utterance if self.last_utterance is not None else state[6:9]
         # state[9:12] = self.remainder
         state[12] = self.turn/20
