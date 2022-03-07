@@ -1,13 +1,12 @@
 import torch.nn.functional as F
 import torch.nn as nn
-import numpy as np
 
 
 class Critic(nn.Module):
 
-    def __init__(self):
+    def __init__(self, input_len):
         super(Critic, self).__init__()
-        self.LSTM = nn.LSTM(13, 100, batch_first=True)
+        self.LSTM = nn.LSTM(input_len, 100, batch_first=True)
         self.linear1 = nn.Linear(100, 100)
         self.linear2 = nn.Linear(100, 1)
         self.hidden = None
