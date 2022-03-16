@@ -70,18 +70,18 @@ def plot(rewards_saved, pos_reward):
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 num_agents = 2
 agents = [Reinforce_agent_LSTM.Reinforce_agent(num_agents), Reinforce_agent_LSTM.Reinforce_agent(num_agents)]
-critic = Critic.Critic(13)
+critic = Critic.Critic(14)
 critic = critic.to(device=device)
-q_critic = Critic.Critic(13+7)
-q_critic = q_critic.to(device=device)
+#q_critic = Critic.Critic(13+7)
+#q_critic = q_critic.to(device=device)
 
 agents[0] = agents[0].to(device=device)
 agents[1] = agents[1].to(device=device)
 optimizers = [torch.optim.Adam(agents[0].parameters(), lr=0.0001),
               torch.optim.Adam(agents[1].parameters(), lr=0.0001)]
 
-optimizer_critic = torch.optim.Adam(critic.parameters(), lr=0.0001)
-optimizer_q_critic = torch.optim.Adam(q_critic.parameters(), lr=0.0001)
+optimizer_critic = torch.optim.Adam(critic.parameters(), lr=0.001)
+# optimizer_q_critic = torch.optim.Adam(q_critic.parameters(), lr=0.0001)x
 torch.autograd.set_detect_anomaly(True)
 batch_size = 1
 
@@ -91,6 +91,12 @@ starting_player = torch.zeros((num_iterations, num_agents), dtype=int)
 rewards_saved = torch.zeros((num_iterations, num_agents), device=device)
 max_reward_prosocial = torch.zeros(num_iterations)
 losses = []
+loss_critic = torch.tensor(0.0, device=device)
+rewards_tot_old = 0
+
+torch.save(agents[0], "Marl0")
+torch.save(agents[1], "Marl1")
+torch.save(critic, "Critic")
 for i in range(num_iterations):
     # Play an episode
     game = Negotiation_continuous.NegotiationGame(num_agents)
@@ -99,35 +105,19 @@ for i in range(num_iterations):
         starting_player[i][j] = (state.curr_player + j) % num_agents
     log_probs = [[], []]
 
-    q_values = torch.empty(2, device=device)
     v = torch.empty(2, device=device)
-
     while not state.is_terminal:
         state_coded = state.generate_processed_state()
-
-
         agreement, proposal, log_prob, utterance = agents[state.curr_player].act(state_coded, state.curr_player)
-
         v[state.curr_player] = critic(state_coded)
-
-        s_a = torch.cat((state_coded[0][0], torch.tensor([agreement], device=device), proposal, utterance), 0)
-        s_a = torch.reshape(s_a, (1, 1, -1))
-        q_values[state.curr_player] = q_critic(s_a)
-
-        #print(agreement, proposal, utterance)
         log_probs[state.curr_player].append(log_prob)
         state, rewards = game.apply_action(proposal, utterance, agreement)
 
     rewards = rewards / game.find_rewards([game.best_collective_proposal()])
-    rewards -= 0.01 * state.turn
+    # rewards -= 0.01 * state.turn
+    delta = rewards - v[state.curr_player]
+    loss_critic += torch.sum(-delta.clone().detach() * v[state.curr_player])
 
-    with torch.no_grad():
-        delta = q_values - v
-
-    loss_critic = torch.sum((rewards - v)**2)
-    loss_q_critic = torch.sum((rewards - q_values)**2)
-
-        #print(delta)
     # Backprop
     for j in range(len(log_probs)):
         if log_probs[j]:
@@ -139,13 +129,10 @@ for i in range(num_iterations):
     if (i+1) % batch_size == 0:
 
         optimizer_critic.zero_grad()
-        optimizer_q_critic.zero_grad()
         loss_critic.backward()
-        loss_q_critic.backward()
         optimizer_critic.step()
-        optimizer_q_critic.step()
         critic.hidden = None
-        q_critic.hidden = None
+        loss_critic = torch.tensor(0.0, device=device)
         for j, loss in enumerate(losses):
             loss = -loss
             optimizers[j].zero_grad()
@@ -155,17 +142,44 @@ for i in range(num_iterations):
             agent.hidden = np.empty(num_agents, dtype=tuple)
         losses = []
     if (i+1) % 100 == 0:
-        print((i+1), rewards, delta)
-        # print("Utterance", game.state.last_utterance, "Hidden utils", game.state.hidden_utils[game.state.curr_player])
-    # rewards_saved[i] = rewards
+        print((i + 1), rewards, delta)
+    if (i+1) % 999999999999 == 0:
+        rewards_tot = 0
+        for j in range(1000):
+            game = Negotiation_continuous.NegotiationGame(num_agents)
+            state = game.state
+            v = torch.empty(2, device=device)
+            while not state.is_terminal:
+                state_coded = state.generate_processed_state()
+                agreement, proposal, log_prob, utterance = agents[state.curr_player].act(state_coded, state.curr_player)
+                v[state.curr_player] = critic(state_coded)
+                log_probs[state.curr_player].append(log_prob)
+                state, rewards = game.apply_action(proposal, utterance, agreement)
+
+            rewards = rewards / game.find_rewards([game.best_collective_proposal()])
+            rewards -= 0.01 * state.turn
+            rewards_tot += rewards[0]
+            for agent in agents:
+                agent.hidden = np.empty(num_agents, dtype=tuple)
+            critic.hidden = None
+        print(rewards_tot, rewards_tot_old)
+        if rewards_tot > rewards_tot_old:
+            rewards_tot_old = rewards_tot
+            torch.save(agents[0], "Marl0")
+            torch.save(agents[1], "Marl1")
+            torch.save(critic, "Critic")
+        else:
+            agents[0] = torch.load("Marl0")
+            agents[1] = torch.load("Marl1")
+            critic = torch.load("Critic")
+
+
     rewards_saved[i] = rewards
 torch.save(agents[0], "agent0_self")
 
 
 rewards_saved = np.array(rewards_saved.cpu())
-#print(rewards_saved)
 pos_reward = reverse_order(rewards_saved.copy(), starting_player)
-#print(rewards_saved)
 plot(rewards_saved, pos_reward)
 
 #print(state.item_pool, state.hidden_utils, state.last_proposal, rewards, curr_player)

@@ -1,11 +1,21 @@
 import torch
 import numpy as np
 import pandas as pd
+import Reinforce_agent_LSTM as reinforce_agent
 
 
-a = np.array([[1,2,3],[1,2,3],[1,2,3]])
-a[0] = a[0, np.array([1,2,0])]
-print(a)
+
+a = reinforce_agent.Reinforce_agent(1)
+nums = torch.ones(1,1,13)
+print(a.forward(nums, 0))
+a.hidden[0] = None
+torch.save(a, "a")
+a = reinforce_agent.Reinforce_agent(1)
+print(a.forward(nums, 0))
+a.hidden[0] = None
+torch.save(a, "a")
+a = torch.load("a")
+print(a.forward(nums, 0))
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 num_players = 3

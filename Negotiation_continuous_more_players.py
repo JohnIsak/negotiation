@@ -28,14 +28,14 @@ class NegotiationState:
         self.remainder = torch.ones(3, device=device)
 
     def generate_processed_state(self):
-        state = torch.zeros(13, dtype=torch.float, device=device)
+        state = torch.zeros(14, dtype=torch.float, device=device)
         state[0:3] = self.hidden_utils[self.curr_player]/10
         # print(type(self.last_proposal))
         #if len(self.proposals) > 0:
         #    state[3:6] = self.proposals[-1]
-        state[6:9] = self.last_utterance if self.last_utterance is not None else state[6:9]
+        state[6:13] = self.last_utterance if self.last_utterance is not None else state[6:13]
         # state[9:12] = self.remainder
-        state[12] = self.turn/20
+        state[13] = self.turn/self.max_turns
         state = torch.reshape(state, (1, 1, -1))
         return state
 
@@ -94,22 +94,18 @@ class NegotiationGame:
             players[i] = (player+i) % self.state.num_players
 
         proposals = self.state.proposals if proposals is None else proposals
-        # print(proposals)
 
         rewards = torch.zeros(self.state.num_players, device=device)
-        maximum_rewards = self._find_max_self_interest()
 
         remainder = torch.ones(3, device=device)
 
         # Spiller 1 kommer med proposal
         for i in range(len(players)-1):
-            rewards[players[i]] = torch.sum(remainder * proposals[i] * self.state.hidden_utils[players[i]]) \
-                                  # / maximum_rewards[players[i]]
+            rewards[players[i]] = torch.sum(remainder * proposals[i] * self.state.hidden_utils[players[i]])
             remainder = remainder-remainder*proposals[i]
 
         #Final player gets remaining
-        rewards[players[-1]] = torch.sum(remainder * self.state.hidden_utils[players[-1]]) \
-                                  # / maximum_rewards[players[-1]]
+        rewards[players[-1]] = torch.sum(remainder * self.state.hidden_utils[players[-1]])
 
         a = rewards.clone().detach()
         for j in range(self.state.num_players):
