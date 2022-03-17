@@ -10,15 +10,10 @@ class NegotiationState:
     def __init__(self, num_players):
         self.num_players = num_players
 
-        utils_generated = False
-        while not utils_generated:
-            self.hidden_utils = torch.randint(0, 11, (self.num_players, 3), device=device)
-            utils_generated = True
-            for i in range(num_players):
-                if sum(self.hidden_utils[i]) == 0:
-                    utils_generated = False
-
+        # TODO Make sure [0,0,0] is not generated
+        self.hidden_utils = torch.rand((self.num_players, 3), device=device)
         self.is_terminal = False
+
         self.proposals = []
         self.last_utterance = None
         self.turn = 0
@@ -28,14 +23,14 @@ class NegotiationState:
         self.remainder = torch.ones(3, device=device)
 
     def generate_processed_state(self):
-        state = torch.zeros(14, dtype=torch.float, device=device)
-        state[0:3] = self.hidden_utils[self.curr_player]/10
+        state = torch.zeros(13, dtype=torch.float, device=device)
+        state[0:3] = self.hidden_utils[self.curr_player]
         # print(type(self.last_proposal))
         #if len(self.proposals) > 0:
         #    state[3:6] = self.proposals[-1]
-        state[6:13] = self.last_utterance if self.last_utterance is not None else state[6:13]
+        state[6:9] = self.last_utterance if self.last_utterance is not None else state[6:9]
         # state[9:12] = self.remainder
-        state[13] = self.turn/self.max_turns
+        state[12] = self.turn/self.max_turns
         state = torch.reshape(state, (1, 1, -1))
         return state
 

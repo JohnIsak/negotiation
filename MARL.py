@@ -70,7 +70,7 @@ def plot(rewards_saved, pos_reward):
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 num_agents = 2
 agents = [Reinforce_agent_LSTM.Reinforce_agent(num_agents), Reinforce_agent_LSTM.Reinforce_agent(num_agents)]
-critic = Critic.Critic(14)
+critic = Critic.Critic(13)
 critic = critic.to(device=device)
 #q_critic = Critic.Critic(13+7)
 #q_critic = q_critic.to(device=device)
