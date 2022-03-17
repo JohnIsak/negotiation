@@ -2,20 +2,56 @@ import torch
 import numpy as np
 import pandas as pd
 import Reinforce_agent_LSTM as reinforce_agent
+import Negotiation_continuous as Negotiation
+
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+#GENERATING STATE TEST
+gamez = Negotiation.NegotiationGame(6)
+state = gamez.state
+state, still_alive = state.generate_processed_state()
+#print(state)
+
+
+#FIND REWARDS TEST::
+batch_size = 6
+agreement = torch.tensor([0, 0, 1, 1, 1, 0], dtype=torch.bool, device=device)
+proposals = torch.tensor([[1,1,1],[1,1,0],[1,0,0],[0,0,0],[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
+rewards = torch.zeros((batch_size, 2), device=device)
+rewards = gamez.find_rewards(agreement, proposals, rewards)
+# print(rewards)
+
+#APPLY ACTION TEST
+rewards = torch.zeros((batch_size, 2), device=device)
+agreement = torch.tensor([0, 0, 0, 0, 1, 0], dtype=torch.bool, device=device)
+proposals = torch.tensor([[1,1,1],[1,1,0],[1,0,0],[0,0,0],[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
+utterances = torch.tensor([[0,0.1,0.2],[1,1,0],[1,0,0],[0,0,0],[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
+state, rewards, still_alive = gamez.apply_action(proposals, utterances, agreement, rewards)
+print(still_alive)
+print(rewards)
+agreement = torch.tensor([1, 1, 1, 1, 1, 1], dtype=torch.bool, device=device)
+proposals = torch.tensor([[1,1,1],[1,1,0],[1,0,0],[0,0,0],[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
+state, rewards, still_alive = gamez.apply_action(proposals, utterances, agreement, rewards)
+print(still_alive)
+print(rewards)
 
 
 
-a = reinforce_agent.Reinforce_agent(1)
-nums = torch.ones(1,1,13)
-print(a.forward(nums, 0))
-a.hidden[0] = None
-torch.save(a, "a")
-a = reinforce_agent.Reinforce_agent(1)
-print(a.forward(nums, 0))
-a.hidden[0] = None
-torch.save(a, "a")
-a = torch.load("a")
-print(a.forward(nums, 0))
+
+#AGENT LSTM BATCHING TEST
+a = reinforce_agent.Reinforce_agent()
+nums = torch.rand(3,1,13)
+mask = torch.tensor([True, True, True], dtype=torch.bool)
+out = a.act(nums, mask)
+#print(a.h_n)
+#print(a.h_n.shape) # Hidden 0 har shape
+#print(out)
+mask = torch.tensor([True, False, True], dtype=torch.bool)
+out = a.act(nums, mask)
+#print(out)
+
+
+#print(a.hidden[1])
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 num_players = 3

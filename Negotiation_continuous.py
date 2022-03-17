@@ -6,37 +6,37 @@ print(device)
 print(torch.version.cuda)
 
 class NegotiationState:
-    def __init__(self):
+    def __init__(self, batch_size):
+        self.batch_size = batch_size
+        # TODO Make sure [0,0,0] is not generated
+        self.hidden_utils = torch.rand((batch_size, 2, 3), device=device)
+        self.still_alive = torch.ones(batch_size, dtype=torch.bool, device=device)
 
-        self.hidden_utils = torch.randint(0, 11, (2, 3), device=device)
-        while sum(self.hidden_utils[0]) == 0 or sum(self.hidden_utils[1] == 0):
-            self.hidden_utils = torch.randint(0, 11, (2, 3), device=device)
-
-        self.is_terminal = False
-        self.last_proposal = None
-        self.last_utterance = None
-        self.next_last_proposal = None
+        self.proposals = torch.tensor((batch_size, 3), device=device)
+        self.last_utterance = torch.zeros((batch_size, 3), device=device)
         self.turn = 0
-        self.curr_player = np.random.randint(0,2)
-        self.max_turns = 20
+        self.curr_player = torch.randint(0, 2, (batch_size,))
+        self.max_turns = 10
+        self.remainder = torch.ones((batch_size, 3), device=device)
 
     def generate_processed_state(self):
-        state = torch.zeros(10, dtype=torch.float, device=device)
-        state[0:3] = self.hidden_utils[self.curr_player]/10
+        state = torch.zeros((self.batch_size, 10), dtype=torch.float, device=device)
+        state[:, 0:3] = self.hidden_utils[torch.arange(0, self.batch_size), self.curr_player]
+        # TODO Legg til batching for proposals også.
         # print(type(self.last_proposal))
-        # if self.last_proposal is not None:
-        #    state[3:6] = self.last_proposal
-        state[6:9] = self.last_utterance if self.last_utterance is not None else state[6:9]
-        state[9] = self.turn/20
-        # state = torch.tensor(state, dtype=torch.float, device=device)
-        state = torch.reshape(state, (1, 1, -1))
-        return state
+        #if len(self.proposals) > 0:
+        #    state[3:6] = self.proposals[-1]
+        state[:, 6:9] = self.last_utterance
+        state[:, 9] = self.turn/self.max_turns
+        state = torch.reshape(state, (-1, 1, 10))
+        return state, self.still_alive
 
 
 class NegotiationGame:
 
-    def __init__(self):
-        self.state = NegotiationState()
+    def __init__(self, batch_size):
+        self.batch_size = batch_size
+        self.state = NegotiationState(batch_size)
 
     def _find_max_utility(self):
         max_utils = [self.state.hidden_utils[0, i] if self.state.hidden_utils[0, i] > self.state.hidden_utils[1, i]
@@ -57,40 +57,34 @@ class NegotiationGame:
                 best_proposal[i] = 1
         return best_proposal
 
-    def apply_action(self, proposal, utterance, agreement):
+    def apply_action(self, proposals, utterances, agreement, rewards):
+
+        # Max Turns reached
+        if self.state.turn == self.state.max_turns:
+            rewards[self.state.still_alive] = -1
+            self.state.still_alive[self.state.still_alive] = 0
+            return self.state, rewards, self.state.still_alive
+
         self.state.turn += 1
         self.state.curr_player = (self.state.curr_player + 1) % 2
 
-        if agreement:
-            self.state.is_terminal = True
-            if self.state.last_proposal is None:
-                return self.state, torch.ones(2, device=device)* -1
-            rewards = self.find_rewards()
-            return self.state, rewards
-        if self.state.turn == self.state.max_turns:
-            self.state.is_terminal = True
-            return self.state, torch.ones(2, device=device) * -1
+        if self.state.turn > 1:
+            rewards = self.find_rewards(agreement, self.state.proposals, rewards)
+            self.state.still_alive[agreement] = 0
 
-        self.state.next_last_proposal = self.state.last_proposal
-        self.state.last_proposal = proposal
-        self.state.last_utterance = utterance
-        return self.state, torch.zeros(2, device=device)
+        self.state.proposals = proposals
+        self.state.utterances = utterances
+        return self.state, rewards, self.state.still_alive
 
-    def find_rewards(self, proposal=None):
-        other_player = (self.state.curr_player + 1) % 2
-        last_proposal = self.state.last_proposal if proposal is None else proposal
-        rewards = torch.zeros(2, device=device)
-        maximum_rewards = self._find_max_self_interest()
+    def find_rewards(self, agreement, proposals, rewards):
 
-        # Rewards til spilleren som kom med proposalet
-        # Det er spilleren som er current player.
-        # curr-player1-> proposal -> curr-player2-> acceptance -> curr-player1
-        rewards[self.state.curr_player] = torch.sum(last_proposal * self.state.hidden_utils[self.state.curr_player]) \
-            / maximum_rewards[self.state.curr_player]
-        rewards[other_player] = torch.sum((torch.ones(3, device=device) - last_proposal)
-                                           * self.state.hidden_utils[other_player]) / maximum_rewards[other_player]
-        a = rewards[self.state.curr_player].clone().detach()
-        rewards[self.state.curr_player] += 1*rewards[other_player]
-        rewards[other_player] += 1*a
-        rewards -= 0.01*self.state.turn
+        curr_player = self.state.curr_player[agreement]
+        other_player = ((self.state.curr_player + 1) % 2)[agreement]
+        rewards[agreement, curr_player] = torch.sum(proposals[agreement] * self.state.hidden_utils[agreement, curr_player],  dim=1)
+        rewards[agreement, other_player] = torch.sum((torch.ones((torch.sum(agreement), 3), device=device) - proposals[agreement]) \
+                                                                * self.state.hidden_utils[agreement, other_player], dim=1)
+        a = rewards[agreement, curr_player].clone().detach()
+        rewards[agreement, curr_player] += 1*rewards[agreement, other_player]
+        rewards[agreement, other_player] += 1*a
+
         return rewards
