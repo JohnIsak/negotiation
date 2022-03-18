@@ -6,11 +6,17 @@ import Negotiation_continuous as Negotiation
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
+
 #GENERATING STATE TEST
 gamez = Negotiation.NegotiationGame(6)
-state = gamez.state
-state, still_alive = state.generate_processed_state()
+game_state = gamez.state
+state, still_alive = game_state.generate_processed_state()
 #print(state)
+
+#FIND_BEST SOLUTION TEST
+print(gamez.find_best_solution())
+print(game_state.hidden_utils)
+print(game_state.curr_player)
 
 
 #FIND REWARDS TEST::
@@ -36,10 +42,9 @@ state, rewards, still_alive = gamez.apply_action(proposals, utterances, agreemen
 print(still_alive)
 print(rewards)
 
-
 #CHANGING DIFFERENT TERMINATION POINTS TEST
 gamez = Negotiation.NegotiationGame(batch_size)
-state = gamez.state
+state_ = gamez.state
 state, still_alive = state.generate_processed_state()
 rewards = torch.zeros((batch_size, 2), device=device)
 
@@ -48,22 +53,19 @@ proposals = torch.tensor([[1,1,1],[1,1,0],[1,0,0],[0,0,0],[0.5,0.5,0.5],[0.5,0.5
 utterances = torch.tensor([[0,0.1,0.2],[1,1,0],[1,0,0],[0,0,0],[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
 state, rewards, still_alive = gamez.apply_action(proposals, utterances, agreement, rewards)
 print(still_alive)
-print(rewards)
-print(state)
+print(rewards, "rewards1")
 agreement = torch.tensor([1, 1, 1, 1, 0, 0], dtype=torch.bool, device=device)
 proposals = torch.tensor([[0.5,0.5,0.5],[0.5,0.5,1],[0.5,1,1],[1,1,1],[0,0,0],[0,0,0.5]], device=device)
 utterances = torch.tensor([[0,0.1,0.2],[1,1,0],[1,0,0],[0,0,0],[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
 state, rewards, still_alive = gamez.apply_action(proposals, utterances, agreement, rewards)
 print(still_alive)
-print(state)
-print(rewards)
+print(rewards, "rewards2")
 agreement = torch.tensor([1, 1],dtype=torch.bool, device=device)
 proposals = torch.tensor([[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
 utterances = torch.tensor([[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
 state, rewards, still_alive = gamez.apply_action(proposals, utterances, agreement, rewards)
 print(still_alive)
-print(state)
-print(rewards)
+print(rewards, "rewards3")
 
 #AGENT LSTM BATCHING TEST
 a = reinforce_agent.Reinforce_agent()
