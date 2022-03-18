@@ -12,8 +12,8 @@ class NegotiationState:
         self.hidden_utils = torch.rand((batch_size, 2, 3), device=device)
         self.still_alive = torch.ones(batch_size, dtype=torch.bool, device=device)
 
-        self.proposals = torch.tensor((batch_size, 3), device=device)
-        self.last_utterance = torch.zeros((batch_size, 3), device=device)
+        self.proposals = torch.zeros((batch_size, 3), device=device)
+        self.utterances = torch.zeros((batch_size, 3), device=device)
         self.turn = 0
         self.curr_player = torch.randint(0, 2, (batch_size,))
         self.max_turns = 10
@@ -26,7 +26,7 @@ class NegotiationState:
         # print(type(self.last_proposal))
         #if len(self.proposals) > 0:
         #    state[3:6] = self.proposals[-1]
-        state[:, 6:9] = self.last_utterance
+        state[:, 6:9] = self.utterances
         state[:, 9] = self.turn/self.max_turns
         state = torch.reshape(state, (-1, 1, 10))
         return state, self.still_alive
@@ -59,6 +59,9 @@ class NegotiationGame:
 
     def apply_action(self, proposals, utterances, agreement, rewards):
 
+        if self.state.turn < 1:
+            agreement = torch.zeros(agreement.shape, dtype=torch.bool, device=device)
+
         # Max Turns reached
         if self.state.turn == self.state.max_turns:
             rewards[self.state.still_alive] = -1
@@ -69,22 +72,28 @@ class NegotiationGame:
         self.state.curr_player = (self.state.curr_player + 1) % 2
 
         if self.state.turn > 1:
-            rewards = self.find_rewards(agreement, self.state.proposals, rewards)
-            self.state.still_alive[agreement] = 0
+            rewards = self.find_rewards(agreement, rewards)
 
-        self.state.proposals = proposals
-        self.state.utterances = utterances
+        self.state.proposals[self.state.still_alive] = proposals
+        self.state.utterances[self.state.still_alive] = utterances
+        self.state.still_alive[self.state.still_alive] = ~agreement
         return self.state, rewards, self.state.still_alive
 
-    def find_rewards(self, agreement, proposals, rewards):
+    def find_rewards(self, agreement, rewards):
+        curr_player = self.state.curr_player[self.state.still_alive][agreement]
+        other_player = ((self.state.curr_player + 1) % 2)[self.state.still_alive][agreement]
+        rewards_ = rewards[self.state.still_alive]
+        proposals = self.state.proposals[self.state.still_alive]
+        print(rewards_, "rewards_")
+        print(agreement, "agreement")
+        hidden_utils = self.state.hidden_utils[self.state.still_alive]
+        ones = torch.ones((torch.sum(agreement), 3), device=device)
 
-        curr_player = self.state.curr_player[agreement]
-        other_player = ((self.state.curr_player + 1) % 2)[agreement]
-        rewards[agreement, curr_player] = torch.sum(proposals[agreement] * self.state.hidden_utils[agreement, curr_player],  dim=1)
-        rewards[agreement, other_player] = torch.sum((torch.ones((torch.sum(agreement), 3), device=device) - proposals[agreement]) \
-                                                                * self.state.hidden_utils[agreement, other_player], dim=1)
-        a = rewards[agreement, curr_player].clone().detach()
-        rewards[agreement, curr_player] += 1*rewards[agreement, other_player]
-        rewards[agreement, other_player] += 1*a
+        rewards_[agreement, curr_player] = torch.sum(proposals[agreement] * hidden_utils[agreement, curr_player],  dim=1)
+        rewards_[agreement, other_player] = torch.sum((ones - proposals[agreement]) * hidden_utils[agreement, other_player], dim=1)
 
+        a = rewards_[agreement, curr_player].clone().detach()
+        rewards_[agreement, curr_player] += 1*rewards_[agreement, other_player]
+        rewards_[agreement, other_player] += 1*a
+        rewards[self.state.still_alive] = rewards_
         return rewards

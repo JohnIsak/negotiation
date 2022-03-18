@@ -5,7 +5,7 @@ import torch.distributions as dist
 import torch.optim as optim
 import numpy as np
 
-
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 class Reinforce_agent(nn.Module):
 
 
@@ -60,7 +60,7 @@ class Reinforce_agent(nn.Module):
         cat_log_prob = torch.reshape(cat_log_prob, (-1, 1))
 
         log_prob = torch.cat((log_prob,cat_log_prob), 1)
-        termination = cat_sample[:, 0]
+        termination = cat_sample[:, 0].bool()
         return termination, proposal, log_prob, utterance
 
 

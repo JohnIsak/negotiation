@@ -17,8 +17,9 @@ state, still_alive = state.generate_processed_state()
 batch_size = 6
 agreement = torch.tensor([0, 0, 1, 1, 1, 0], dtype=torch.bool, device=device)
 proposals = torch.tensor([[1,1,1],[1,1,0],[1,0,0],[0,0,0],[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
+state.proposals = proposals
 rewards = torch.zeros((batch_size, 2), device=device)
-rewards = gamez.find_rewards(agreement, proposals, rewards)
+rewards = gamez.find_rewards(agreement, rewards)
 # print(rewards)
 
 #APPLY ACTION TEST
@@ -36,7 +37,33 @@ print(still_alive)
 print(rewards)
 
 
+#CHANGING DIFFERENT TERMINATION POINTS TEST
+gamez = Negotiation.NegotiationGame(batch_size)
+state = gamez.state
+state, still_alive = state.generate_processed_state()
+rewards = torch.zeros((batch_size, 2), device=device)
 
+agreement = torch.tensor([0, 0, 0, 0, 1, 0], dtype=torch.bool, device=device)
+proposals = torch.tensor([[1,1,1],[1,1,0],[1,0,0],[0,0,0],[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
+utterances = torch.tensor([[0,0.1,0.2],[1,1,0],[1,0,0],[0,0,0],[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
+state, rewards, still_alive = gamez.apply_action(proposals, utterances, agreement, rewards)
+print(still_alive)
+print(rewards)
+print(state)
+agreement = torch.tensor([1, 1, 1, 1, 0, 0], dtype=torch.bool, device=device)
+proposals = torch.tensor([[0.5,0.5,0.5],[0.5,0.5,1],[0.5,1,1],[1,1,1],[0,0,0],[0,0,0.5]], device=device)
+utterances = torch.tensor([[0,0.1,0.2],[1,1,0],[1,0,0],[0,0,0],[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
+state, rewards, still_alive = gamez.apply_action(proposals, utterances, agreement, rewards)
+print(still_alive)
+print(state)
+print(rewards)
+agreement = torch.tensor([1, 1],dtype=torch.bool, device=device)
+proposals = torch.tensor([[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
+utterances = torch.tensor([[0.5,0.5,0.5],[0.5,0.5,1]], device=device)
+state, rewards, still_alive = gamez.apply_action(proposals, utterances, agreement, rewards)
+print(still_alive)
+print(state)
+print(rewards)
 
 #AGENT LSTM BATCHING TEST
 a = reinforce_agent.Reinforce_agent()
