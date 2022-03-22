@@ -11,6 +11,6 @@ class RandomAgent:
         for i in range(3):
             proposal[i] = np.random.randint(0, self.item_pool[i] + 1)
         agreement = 0
-        if np.random.random() <= 0.1:
+        if np.random.random() <= 0.5:
             agreement = 1
         return proposal, agreement

@@ -1,5 +1,5 @@
 import numpy as np
-import Negotiation_continuous_more_players as Negotiation_continuous
+import Negotiation_continuous as Negotiation_continuous
 import Reinforce_agent_LSTM
 import Critic
 import torch
@@ -69,28 +69,28 @@ def plot(rewards_saved, pos_reward):
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 num_agents = 2
-agents = [Reinforce_agent_LSTM.Reinforce_agent(num_agents), Reinforce_agent_LSTM.Reinforce_agent(num_agents)]
-critic = Critic.Critic(13)
+agents = [Reinforce_agent_LSTM.Reinforce_agent(), Reinforce_agent_LSTM.Reinforce_agent()]
+critic = Critic.Critic()
 critic = critic.to(device=device)
 #q_critic = Critic.Critic(13+7)
 #q_critic = q_critic.to(device=device)
 
 agents[0] = agents[0].to(device=device)
 agents[1] = agents[1].to(device=device)
-optimizers = [torch.optim.Adam(agents[0].parameters(), lr=0.0001),
-              torch.optim.Adam(agents[1].parameters(), lr=0.0001)]
+optimizers = [torch.optim.Adam(agents[0].parameters(), lr=0.001),
+              torch.optim.Adam(agents[1].parameters(), lr=0.001)]
 
 optimizer_critic = torch.optim.Adam(critic.parameters(), lr=0.001)
 # optimizer_q_critic = torch.optim.Adam(q_critic.parameters(), lr=0.0001)x
 torch.autograd.set_detect_anomaly(True)
-batch_size = 1
+batch_size = 12
+still_alive = []
+num_iterations = 1000
 
-num_iterations = 200_000
-
-starting_player = torch.zeros((num_iterations, num_agents), dtype=int)
-rewards_saved = torch.zeros((num_iterations, num_agents), device=device)
-max_reward_prosocial = torch.zeros(num_iterations)
-losses = []
+starting_player = torch.zeros(num_iterations)
+rewards_saved = torch.zeros((num_iterations, batch_size, num_agents), device=device)
+max_reward_prosocial = torch.zeros((num_iterations, batch_size))
+losses = torch.zeros(2)
 loss_critic = torch.tensor(0.0, device=device)
 rewards_tot_old = 0
 
@@ -99,35 +99,37 @@ torch.save(agents[1], "Marl1")
 torch.save(critic, "Critic")
 for i in range(num_iterations):
     # Play an episode
-    game = Negotiation_continuous.NegotiationGame(num_agents)
+    game = Negotiation_continuous.NegotiationGame(batch_size)
     state = game.state
-    for j in range(num_agents):
-        starting_player[i][j] = (state.curr_player + j) % num_agents
-    log_probs = [[], []]
+    starting_player[i] = state.curr_player
+    rewards = torch.zeros((batch_size, 2), device=device)
 
-    v = torch.empty(2, device=device)
-    while not state.is_terminal:
+    print(state.curr_player)
+    log_probs = torch.zeros((batch_size, num_agents), device=device)
+    v = torch.zeros((batch_size, 2), device=device)
+
+    while sum(state.still_alive) != 0:
         state_coded = state.generate_processed_state()
-        agreement, proposal, log_prob, utterance = agents[state.curr_player].act(state_coded, state.curr_player)
-        v[state.curr_player] = critic(state_coded)
-        log_probs[state.curr_player].append(log_prob)
-        state, rewards = game.apply_action(proposal, utterance, agreement)
+        still_alive.append(state.still_alive.clone().detach())
+        agreement, proposal, log_prob, utterance = agents[state.curr_player].act(state_coded, still_alive[-1])
+        # a = critic(state_coded, state.still_alive)\+0
+        v_est = critic(state_coded, still_alive[-1])
+        print(v_est, "asd")
+        v[state.still_alive, state.curr_player] = torch.reshape(v_est, (-1,))
+        print(v, "v")
+        log_probs[state.still_alive, state.curr_player] += torch.sum(log_prob, dim=1)
+        print(log_probs, "log_probs")
+        state, rewards = game.apply_action(proposal, utterance, agreement, rewards)
 
-    rewards = rewards / game.find_rewards([game.best_collective_proposal()])
-    # rewards -= 0.01 * state.turn
-    delta = rewards - v[state.curr_player]
-    loss_critic += torch.sum(-delta.clone().detach() * v[state.curr_player])
+    delta = rewards - v
+    loss_critic = torch.sum(-delta.clone().detach() * v)
 
     # Backprop
-    for j in range(len(log_probs)):
-        if log_probs[j]:
-            if len(losses) < num_agents:
-                losses.append(torch.cat(log_probs[j]).sum())
-            else:
-                losses[j] = torch.cat(log_probs[j]).sum()
-            losses[j] *= delta[j].clone().detach()
-    if (i+1) % batch_size == 0:
+    losses = torch.sum(log_probs*delta.clone().detach(), dim=0)
+    losses = losses/batch_size
+    print("BACKWARRDDINGG")
 
+    if (i+1) % 1 == 0:
         optimizer_critic.zero_grad()
         loss_critic.backward()
         optimizer_critic.step()
@@ -140,7 +142,7 @@ for i in range(num_iterations):
             optimizers[j].step()
         for agent in agents:
             agent.hidden = np.empty(num_agents, dtype=tuple)
-        losses = []
+        losses = torch.zeros(2, device=device)
     if (i+1) % 100 == 0:
         print((i + 1), rewards, delta)
     if (i+1) % 999999999999 == 0:

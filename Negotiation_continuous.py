@@ -14,7 +14,7 @@ class NegotiationState:
         self.proposals = torch.zeros((batch_size, 3), device=device)
         self.utterances = torch.zeros((batch_size, 3), device=device)
         self.turn = 0
-        self.curr_player = torch.randint(0, 2, (batch_size,))
+        self.curr_player = np.random.randint(0, 2)
         self.max_turns = 10
         self.remainder = torch.ones((batch_size, 3), device=device)
 
@@ -28,8 +28,7 @@ class NegotiationState:
         state[:, 6:9] = self.utterances
         state[:, 9] = self.turn/self.max_turns
         state = torch.reshape(state, (-1, 1, 10))
-        return state, self.still_alive
-
+        return state
 
 class NegotiationGame:
 
@@ -73,12 +72,12 @@ class NegotiationGame:
 
         self.state.proposals[self.state.still_alive] = proposals
         self.state.utterances[self.state.still_alive] = utterances
-        self.state.still_alive[self.state.still_alive] = ~agreement
-        return self.state, rewards, self.state.still_alive
+        self.state.still_alive[self.state.still_alive.clone()] = ~agreement
+        return self.state, rewards
 
     def find_rewards(self, agreement, rewards, proposal=None):
-        curr_player = self.state.curr_player[self.state.still_alive][agreement]
-        other_player = ((self.state.curr_player + 1) % 2)[self.state.still_alive][agreement]
+        curr_player = self.state.curr_player
+        other_player = (self.state.curr_player + 1) % 2
 
         rewards_ = rewards[self.state.still_alive]
         proposals = self.state.proposals[self.state.still_alive] if proposal is None else proposal

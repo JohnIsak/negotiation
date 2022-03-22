@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 import pandas as pd
+
+import Critic
 import Reinforce_agent_LSTM as reinforce_agent
 import Negotiation_continuous as Negotiation
 
@@ -78,6 +80,18 @@ out = a.act(nums, mask)
 mask = torch.tensor([True, False, True], dtype=torch.bool)
 out = a.act(nums, mask)
 #print(out)
+
+#CRITIC BATCHING TEST
+a = Critic.Critic()
+nums = torch.rand(3,1,13)
+mask = torch.tensor([True, True, True], dtype=torch.bool)
+out = a.forward(nums, mask)
+print(a.h_n)
+print(a.h_n.shape) # Hidden 0 har shape
+print(out)
+mask = torch.tensor([True, False, True], dtype=torch.bool)
+out = a.forward(nums, mask)
+print(out)
 
 
 #print(a.hidden[1])
