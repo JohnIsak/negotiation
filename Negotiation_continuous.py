@@ -62,7 +62,7 @@ class NegotiationGame:
         if self.state.turn == self.state.max_turns:
             rewards[self.state.still_alive] = -1
             self.state.still_alive[self.state.still_alive] = 0
-            return self.state, rewards, self.state.still_alive
+            return self.state, rewards
 
         self.state.turn += 1
         self.state.curr_player = (self.state.curr_player + 1) % 2

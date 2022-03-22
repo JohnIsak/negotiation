@@ -48,7 +48,7 @@ class Reinforce_agent(nn.Module):
         log_prob = normal_distributions.log_prob(sample)
         proposal = torch.sigmoid(sample[:, 0:3])
         utterance = sample[:, 3:6]
-        log_prob[:, 0:3] *= proposal*(1-proposal)
+        # log_prob[:, 0:3] *= proposal*(1-proposal)
 
         cat_dist_val = torch.sigmoid(cat_dist_val)
         cat_dist_val = torch.reshape(cat_dist_val, (-1, 1))
