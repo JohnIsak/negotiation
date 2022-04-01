@@ -8,6 +8,13 @@ import Negotiation_continuous as Negotiation
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
+distribution_1 = torch.distributions.normal.Normal(0, 1)
+distribution_2 = torch.distributions.normal.Normal(0, 2)
+distribution_3 = torch.distributions.normal.Normal(0, 3)
+
+print(distribution_1.entropy()+distribution_2.entropy()+distribution_3.entropy())
+distribution = torch.distributions.normal.Normal(0, 0.29)
+print(distribution.entropy())
 
 #GENERATING STATE TEST
 gamez = Negotiation.NegotiationGame(6)
