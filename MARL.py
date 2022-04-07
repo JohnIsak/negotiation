@@ -73,10 +73,10 @@ def plot(rewards_saved, pos_reward, num_agents):
 
 def main():
     num_agents = 2
-    #agents = [Reinforce_agent_LSTM.Reinforce_agent(), Reinforce_agent_LSTM.Reinforce_agent()]
-    agents = [torch.load("Marl0"), torch.load("Marl1")]
-    #critic = Critic.Critic()
-    critic = torch.load("Critic")
+    agents = [Reinforce_agent_LSTM.Reinforce_agent(), Reinforce_agent_LSTM.Reinforce_agent()]
+    #agents = [torch.load("Marl0"), torch.load("Marl1")]
+    critic = Critic.Critic()
+    #critic = torch.load("Critic")
     critic = critic.to(device=device)
     # q_critic = Critic.Critic(13+7)
     # q_critic = q_critic.to(device=device)
@@ -88,7 +88,7 @@ def main():
     # optimizer_q_critic = torch.optim.Adam(q_critic.parameters(), lr=0.0001)x
     torch.autograd.set_detect_anomaly(True)
     batch_size = 2048
-    num_iterations = 10_000
+    num_iterations = 100_000
     starting_player = torch.zeros(num_iterations)
     rewards_saved = np.zeros((num_iterations, num_agents))
     losses = []
@@ -134,9 +134,9 @@ def main():
                 agent.c_n = None
             if torch.sum(rewards_tot) > torch.sum(rewards_tot_old):
                 rewards_tot_old = rewards_tot
-                torch.save(agents[0], "Marl0")
-                torch.save(agents[1], "Marl1")
-                torch.save(critic, "Critic")
+                torch.save(agents[0], "Marl0_comm")
+                torch.save(agents[1], "Marl1_comm")
+                torch.save(critic, "Critic_comm")
 
         rewards_saved[i] = (torch.sum(rewards, dim=0) / batch_size).cpu().numpy()
     torch.save(agents[0], "agent0_self")

@@ -21,7 +21,7 @@ class NegotiationState:
         state = torch.zeros((self.batch_size, 10), dtype=torch.float, device=device)
         state[:, 0:3] = self.hidden_utils[torch.arange(0, self.batch_size), self.curr_player]
         # state[:, 3:6] = self.proposals
-        state[:, 6:9] = self.utterances
+        #state[:, 6:9] = self.utterances
         state[:, 9] = self.turn/self.max_turns
         state = torch.reshape(state, (-1, 1, 10))
         return state
@@ -76,7 +76,7 @@ class NegotiationGame:
             rewards = self.find_rewards_prosocial(agreement, rewards)
 
         self.state.proposals[self.state.still_alive] = proposals
-        self.state.utterances[self.state.still_alive] = utterances
+        self.state.utterances[self.state.still_alive.clone()] = utterances
         self.state.still_alive[self.state.still_alive.clone()] = ~agreement
         return self.state, rewards
 
