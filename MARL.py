@@ -96,7 +96,7 @@ def main():
     for i in range(num_iterations):
         # Play an episode
         log_probs, rewards, v, _starting_player, listening_loss = play_episode(agents, batch_size, critic)
-        if torch.rand(1) < 0.01:
+        if torch.rand(1) < 0.1:
             print(listening_loss, "listening loss")
         starting_player[i] = _starting_player
         delta = rewards - v

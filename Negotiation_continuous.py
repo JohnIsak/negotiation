@@ -4,6 +4,8 @@ import torch
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 print(device)
 print(torch.version.cuda)
+print(torch.version.__version__)
+
 
 class NegotiationState:
     def __init__(self, batch_size):
@@ -21,13 +23,13 @@ class NegotiationState:
         state = torch.zeros((self.batch_size, 10), dtype=torch.float, device=device)
         state[:, 0:3] = self.hidden_utils[torch.arange(0, self.batch_size), self.curr_player]
         # state[:, 3:6] = self.proposals
-        #state[:, 6:9] = self.utterances
+        state[:, 6:9] = self.utterances
         state[:, 9] = self.turn/self.max_turns
         state = torch.reshape(state, (-1, 1, 10))
         return state
 
-class NegotiationGame:
 
+class NegotiationGame:
     def __init__(self, batch_size):
         self.reward_sharing = 1
         self.batch_size = batch_size
@@ -108,8 +110,8 @@ class NegotiationGame:
         # rewards_ = rewards_players[agreement]/rewards_max[agreement]
         rewards_ = rewards_players[agreement]
         rewards_[:, self.state.curr_player] /= rewards_max_curr[agreement, self.state.curr_player]
-        rewards_[:, (self.state.curr_player+1)%2] /= rewards_max_other[agreement, (self.state.curr_player+1)%2]
-        #print(rewards_)
+        rewards_[:, (self.state.curr_player+1) % 2] /= rewards_max_other[agreement, (self.state.curr_player+1) % 2]
+        # print(rewards_)
         rewards_ = 1/(np.e**(-5*(rewards_-1)))
 
         a = rewards[self.state.still_alive]
