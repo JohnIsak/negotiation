@@ -92,6 +92,7 @@ def main():
     starting_player = torch.zeros(num_iterations)
     rewards_saved = np.zeros((num_iterations, num_agents))
     losses = []
+    signal_loss_lr = 1
     rewards_tot_old = torch.zeros(2)
     for i in range(num_iterations):
         # Play an episode
@@ -115,7 +116,8 @@ def main():
             # loss_critic = torch.tensor(0.0, device=device)
             for j, loss in enumerate(losses):
                 loss = -loss
-                loss += listening_loss[j]
+                loss += signal_loss_lr*listening_loss[j]
+                signal_loss_lr = 0.9999**i
                 optimizers[j].zero_grad()
                 loss.backward()
                 optimizers[j].step()
@@ -134,9 +136,9 @@ def main():
                 agent.c_n = None
             if torch.sum(rewards_tot) > torch.sum(rewards_tot_old):
                 rewards_tot_old = rewards_tot
-                torch.save(agents[0], "Marl0_comm")
-                torch.save(agents[1], "Marl1_comm")
-                torch.save(critic, "Critic_comm")
+                torch.save(agents[0], "Marl0_possig")
+                torch.save(agents[1], "Marl1_possig")
+                torch.save(critic, "Critic_possig")
 
         rewards_saved[i] = (torch.sum(rewards, dim=0) / batch_size).cpu().numpy()
     torch.save(agents[0], "agent0_self")

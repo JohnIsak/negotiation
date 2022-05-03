@@ -8,6 +8,9 @@ import Negotiation_continuous as Negotiation
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
+a = torch.tensor([1,2,3])
+print(a[:9])
+
 distribution_1 = torch.distributions.normal.Normal(0, 1)
 distribution_2 = torch.distributions.normal.Normal(0, 2)
 distribution_3 = torch.distributions.normal.Normal(0, 3)

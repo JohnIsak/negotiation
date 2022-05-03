@@ -16,7 +16,7 @@ class NegotiationState:
         self.utterances = torch.zeros((batch_size, 3), device=device)
         self.turn = 0
         self.curr_player = np.random.randint(0, 2)
-        self.max_turns = 10
+        self.max_turns = 5
         self.remainder = torch.ones((batch_size, 3), device=device)
 
     def generate_processed_state(self):
