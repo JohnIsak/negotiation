@@ -74,9 +74,9 @@ def plot(rewards_saved, pos_reward, num_agents):
 def main():
     num_agents = 2
     agents = [Reinforce_agent_LSTM.Reinforce_agent(), Reinforce_agent_LSTM.Reinforce_agent()]
-    #agents = [torch.load("Marl0"), torch.load("Marl1")]
+    #agents = [torch.load("newuttpolfixed_0"), torch.load("newuttpolfixed_1")]
     critic = Critic.Critic()
-    #critic = torch.load("Critic")
+    #critic = torch.load("newuttpolfixed_c")
     critic = critic.to(device=device)
     # q_critic = Critic.Critic(13+7)
     # q_critic = q_critic.to(device=device)
@@ -92,16 +92,19 @@ def main():
     starting_player = torch.zeros(num_iterations)
     rewards_saved = np.zeros((num_iterations, num_agents))
     losses = []
-    signal_loss_lr = 1
+    # global signal_loss_lr
+    # signal_loss_lr = 1
     rewards_tot_old = torch.zeros(2)
     for i in range(num_iterations):
         # Play an episode
         log_probs, rewards, v, _starting_player, listening_loss = play_episode(agents, batch_size, critic)
         if torch.rand(1) < 0.1:
             print(listening_loss, "listening loss")
+        # print(v[0])
+        # print(v[0])
         starting_player[i] = _starting_player
         delta = rewards - v
-        loss_critic = torch.sum(-delta.clone().detach() * v) / batch_size
+        loss_critic = torch.mean(-delta.clone().detach() * v)
         # Backprop
         for j, log_prob in enumerate(log_probs):
             losses.append(torch.sum(log_prob * delta[:, j].clone().detach()))
@@ -116,8 +119,8 @@ def main():
             # loss_critic = torch.tensor(0.0, device=device)
             for j, loss in enumerate(losses):
                 loss = -loss
-                loss += signal_loss_lr*listening_loss[j]
-                signal_loss_lr = 0.9999**i
+                #loss += signal_loss_lr*listening_loss[j]
+                #signal_loss_lr = 0.9999**i
                 optimizers[j].zero_grad()
                 loss.backward()
                 optimizers[j].step()
@@ -136,12 +139,11 @@ def main():
                 agent.c_n = None
             if torch.sum(rewards_tot) > torch.sum(rewards_tot_old):
                 rewards_tot_old = rewards_tot
-                torch.save(agents[0], "Marl0_possig")
-                torch.save(agents[1], "Marl1_possig")
-                torch.save(critic, "Critic_possig")
+                torch.save(agents[0], "nocomm_0")
+                torch.save(agents[1], "nocomm_1")
+                torch.save(critic, "nocomm_c")
 
         rewards_saved[i] = (torch.sum(rewards, dim=0) / batch_size).cpu().numpy()
-    torch.save(agents[0], "agent0_self")
     pos_reward = reverse_order(rewards_saved.copy(), starting_player)
     plot(rewards_saved, pos_reward, num_agents)
 
@@ -163,6 +165,7 @@ def play_episode(agents, batch_size, critic, testing=False):
             listening_loss[state.curr_player] += _listening_loss
             v_est = critic(state_coded, still_alive[-1])
             v[still_alive[-1], state.curr_player] = torch.reshape(v_est, (-1,))
+            # log_prob[:, 3:6] *= signal_loss_lr
             log_probs[state.curr_player][still_alive[-1]] += torch.sum(log_prob, dim=1)
         state, rewards = game.apply_action(proposal, utterance, agreement, rewards)
     return log_probs, rewards, v, starting_player, listening_loss
@@ -170,4 +173,4 @@ def play_episode(agents, batch_size, critic, testing=False):
 
 main()
 
-#print(state.item_pool, state.hidden_utils, state.last_proposal, rewards, curr_player)
+# print(state.item_pool, state.hidden_utils, state.last_proposal, rewards, curr_player)

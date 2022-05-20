@@ -6,8 +6,8 @@ import torch.optim as optim
 import numpy as np
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-class Reinforce_agent(nn.Module):
 
+class Reinforce_agent(nn.Module):
     def __init__(self):
         super(Reinforce_agent, self).__init__()
         self.output_len = 13
@@ -16,6 +16,8 @@ class Reinforce_agent(nn.Module):
         self.linear2 = nn.Linear(100, self.output_len)
         self.h_n = None
         self.c_n = None
+        self.epsilon = 0.0000001
+
 
     def forward(self, x, mask):
         x, (h_n, c_n) = self.LSTM(x[mask], (self.h_n[:, mask], self.c_n[:, mask])) \
@@ -39,7 +41,9 @@ class Reinforce_agent(nn.Module):
 
         mean = out[:, 0:6]
         std = torch.pow(out[:, 6:12], 2)
-        std[:, 9:12] = 0.001
+        std += self.epsilon #Can be 0 otherwise
+        std[:, 3:6] = 0.001
+        #print(std)
         if torch.rand(1) < 0.001:
            # print(std[:, 0:3], "standard deviations")
             print(mean[:, 3:6], "utterances")
@@ -59,9 +63,9 @@ class Reinforce_agent(nn.Module):
             # print(entropy)
             # print(entropy.shape)
             sample = normal_distributions.sample()
-            log_prob = normal_distributions.log_prob(sample)
+            log_prob = normal_distributions.log_prob(sample) #MÅ ENDRES HVIS ACTION SELECTION SKAL INKLUDERES FOR UTTPOL
             proposal = torch.sigmoid(sample[:, 0:3])
-            utterance = torch.tanh(sample[:, 3:6])  # tanh
+            utterance = torch.tanh(mean[:, 3:6])  # tanh
 
             cat_dist_val = torch.sigmoid(cat_dist_val)
             termination = torch.ge(torch.rand(len(cat_dist_val), device=device), cat_dist_val)
@@ -77,28 +81,13 @@ class Reinforce_agent(nn.Module):
 
     def positive_signalling_loss(self, means):
         mask = torch.randint(2, (int(len(means)),), dtype=torch.bool)
-        dist_1 = torch.pow(means[mask][:len(means[~mask])] - means[~mask][:len(means[mask])], 2)
+        dist_1 = torch.pow(torch.abs(means[mask][:len(means[~mask])] - means[~mask][:len(means[mask])]) + self.epsilon, 2)
         dist_2 = torch.pow(2 - torch.abs((means[mask][:len(means[~mask])] - means[~mask][:len(means[mask])])), 2)
-        # print(dist_2)
         dist = torch.cat((dist_1, dist_2), 1)
         dist = dist.resize(len(dist), 2, 3)
-        # print(dist[1], "1")
-        # print(dist[2], "2")
-        # print(dist[3], "3")
         delta = torch.min(dist[:], 1).values
-        # print(delta[1], "d1")
-        # print(delta[2], "d2")
-        # print(delta[3], "d3")
         delta = torch.sqrt(torch.sum(delta, dim=1))
-        # print(len(delta), "deltasum")
-        delta = delta + 0.00000001
+        delta = delta + self.epsilon
         loss = torch.mean(1/delta)
         loss = torch.nan_to_num(loss)
         return loss
-
-
-
-
-
-
-
