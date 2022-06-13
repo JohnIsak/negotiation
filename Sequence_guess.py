@@ -4,7 +4,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 
 
 class SequenceState:
-    def __init__(self, batch_size, guess_alphabet_size, guess_seq_length, utt_albhabet_size, utt_seq_length):
+    def __init__(self, batch_size, guess_alphabet_size, guess_seq_length, utt_albhabet_size, utt_seq_length, max_turns):
         self.batch_size = batch_size
 
         self.guess_alphabet_size = guess_alphabet_size
@@ -20,7 +20,7 @@ class SequenceState:
         self.still_alive = torch.ones(batch_size, dtype=torch.bool, device=device)
 
         self.turn = 0
-        self.max_turns = 4
+        self.max_turns = max_turns
         self.curr_player = 0
         # 0 = Guesser, 1 = Mastermind
 
@@ -38,10 +38,10 @@ class SequenceState:
         return state
 
 class SequenceGame:
-    def __init__(self, batch_size, guess_alphabet_size, guess_seq_length, utt_albhabet_size, utt_seq_length):
+    def __init__(self, batch_size, guess_alphabet_size, guess_seq_length, utt_albhabet_size, utt_seq_length, max_turns):
         self.reward_sharing = 1
         self.batch_size = batch_size
-        self.state = SequenceState(batch_size, guess_alphabet_size, guess_seq_length, utt_albhabet_size, utt_seq_length)
+        self.state = SequenceState(batch_size, guess_alphabet_size, guess_seq_length, utt_albhabet_size, utt_seq_length, max_turns)
 
     def apply_action(self, rewards, guess=None, utt=None):
         #print(self.state.turn, "Turn")
