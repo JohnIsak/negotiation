@@ -41,8 +41,8 @@ class Reinforce_agent(nn.Module):
 
         mean = out[:, 0:6]
         std = torch.pow(out[:, 6:12], 2)
-        std += self.epsilon #Can be 0 otherwise
-        std[:, 3:6] = 0.001
+        std += self.epsilon # Can be 0 otherwise
+        std[:, 3:6] = 0.001 # Fast exploration parameter.
         #print(std)
         if torch.rand(1) < 0.001:
            # print(std[:, 0:3], "standard deviations")
@@ -73,8 +73,8 @@ class Reinforce_agent(nn.Module):
             cat_log_prob = torch.reshape(cat_log_prob, (-1, 1))
             log_prob = torch.cat((log_prob, cat_log_prob), 1)
 
-
-            signal_loss = self.positive_signalling_loss(utterance) if len(mean) > 2 else 0
+            signal_loss = 0
+            #signal_loss = self.positive_signalling_loss(utterance) if len(mean) > 2 else 0
         #Weighting of linguistic channel set to 0 when not using communication
 
         return termination, proposal, log_prob, utterance.clone().detach(), signal_loss
@@ -90,4 +90,5 @@ class Reinforce_agent(nn.Module):
         delta = delta + self.epsilon
         loss = torch.mean(1/delta)
         loss = torch.nan_to_num(loss)
+        loss *= 0.0001
         return loss

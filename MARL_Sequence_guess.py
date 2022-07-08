@@ -16,6 +16,7 @@ def reverse_order(rewards_saved, starting_player):
 
 
 def plot(rewards_saved, num_agents):
+
     avg = pd.DataFrame(rewards_saved[:, 0])
     avg = avg.iloc[:, 0].rolling(window=10).mean()
 
@@ -27,7 +28,7 @@ def plot(rewards_saved, num_agents):
 
     max_min_plot = []
     for j in range(num_agents):
-        max_min_plot.append(max_min.iloc[:, j].rolling(window=10).mean())
+            max_min_plot.append(max_min.iloc[:, j].rolling(window=10).mean())
 
     rewards = pd.DataFrame(rewards_saved)
 
@@ -84,7 +85,7 @@ def main():
 
     guess_agent = Seq_Agent_LSTM.Reinforce_agent(utt_alphabet_size, guess_alphabet_size, guess_seq_length, False, max_turns)
     guess_agent = guess_agent.to(device)
-    mastermind_agent = Seq_Agent_LSTM.Reinforce_agent(guess_alphabet_size*2, utt_alphabet_size, utt_seq_length, False, max_turns)
+    mastermind_agent = Seq_Agent_LSTM.Reinforce_agent(guess_alphabet_size*2, utt_alphabet_size, utt_seq_length, True, max_turns)
     mastermind_agent.to(device)
 
     optimizers = [torch.optim.Adam(guess_agent.parameters(), lr=0.001),
@@ -100,8 +101,8 @@ def main():
         delta = rewards - baseline
         baseline = 0.7*baseline + 0.3*rewards[0]
         # if (i+1) % 5000 == 0:
-        #     mastermind_agent.target_entropy /= 2
-        #     print("Halving Entropy")
+        #    mastermind_agent.target_entropy /= 2
+        #    print("Halving Entropy")
         # Backprop
         for j, log_prob in enumerate(log_probs):
             losses.append(torch.sum(log_prob * delta[:, j].clone().detach()))
@@ -128,7 +129,7 @@ def main():
                 torch.save(mastermind_agent, "Mastermind Agent")
 
         rewards_saved[i] = (torch.sum(rewards, dim=0) / batch_size).cpu().numpy()
-    np.save(rewards_saved, "Rewards Positive Listening")
+    np.save("Rewards Positive Signalling 4", rewards_saved)
     plot(rewards_saved, 2)
 
 
@@ -147,14 +148,13 @@ def play_episode(mastermind, guesser, batch_size, testing=False):
 
         input = state.generate_processed_state()[state.still_alive.clone()]
         utt, log_prob, _signalling_loss = mastermind.forward(input, testing)
-        utt = torch.zeros(utt.shape, device=device, dtype=torch.long)
+        # utt = torch.zeros(utt.shape, device=device, dtype=torch.long) #UNCOMMENT FOR NO COMMUNICATION CHANNEL
         if not testing:
             log_probs[state.curr_player][state.still_alive.clone()] += torch.sum(log_prob, dim=1)
         state, rewards = game.apply_action(rewards, utt=utt)
         signalling_loss += _signalling_loss
 
     return log_probs, rewards, signalling_loss
-
 
 main()
 

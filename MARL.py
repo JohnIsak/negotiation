@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # torch.autograd.set_detect_anomaly(True)
+
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
@@ -108,6 +109,7 @@ def main():
         # Backprop
         for j, log_prob in enumerate(log_probs):
             losses.append(torch.sum(log_prob * delta[:, j].clone().detach()))
+            # losses[-1] += listening_loss[j]
             losses[-1] = losses[-1] / batch_size
 
         if (i + 1) % 1 == 0:
@@ -119,8 +121,9 @@ def main():
             # loss_critic = torch.tensor(0.0, device=device)
             for j, loss in enumerate(losses):
                 loss = -loss
-                #loss += signal_loss_lr*listening_loss[j]
-                #signal_loss_lr = 0.9999**i
+                loss += listening_loss[j]
+                # loss += signal_loss_lr*listening_loss[j]
+                # signal_loss_lr = 0.9999**i
                 optimizers[j].zero_grad()
                 loss.backward()
                 optimizers[j].step()
@@ -139,9 +142,9 @@ def main():
                 agent.c_n = None
             if torch.sum(rewards_tot) > torch.sum(rewards_tot_old):
                 rewards_tot_old = rewards_tot
-                torch.save(agents[0], "nocomm_0")
-                torch.save(agents[1], "nocomm_1")
-                torch.save(critic, "nocomm_c")
+                torch.save(agents[0], "comm_0")
+                torch.save(agents[1], "comm_1")
+                torch.save(critic, "comm_c")
 
         rewards_saved[i] = (torch.sum(rewards, dim=0) / batch_size).cpu().numpy()
     pos_reward = reverse_order(rewards_saved.copy(), starting_player)
