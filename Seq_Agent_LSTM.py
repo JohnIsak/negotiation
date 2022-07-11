@@ -18,6 +18,8 @@ class Reinforce_agent(nn.Module):
         self.target_entropy = torch.log(torch.tensor(self.output_alphabet_size))*0.1
 
     def forward(self, input, testing):
+        # print(input)
+        print(input.shape)
         x, hidden = self.encoder(input[:, :, :self.encoder.input_size]) # X: [BATCH SIZE, SEQ_LENGTH, HIDDEN_SIZE]
         x = x[:, -1:, :] # Only interested in final hidden state.
         turn_one_hot = F.one_hot((input[:, -1:, -1]).long(), num_classes=self.n_turns)
