@@ -12,23 +12,34 @@ class Reinforce_agent(nn.Module):
         self.output_length = output_length
         self.output_alphabet_size = output_alphabet_size
         self.encoder = nn.LSTM(input_size, 100, batch_first=True) # [BATCH SIZE, SEQ LENGTH, INPUT TENSOR]
-        self.decoder = nn.LSTM(100+n_turns, 100, batch_first=True)
+        self.decoder = nn.LSTM(output_alphabet_size, 100, batch_first=True)
         self.fc = nn.Linear(100, output_alphabet_size)
         self.signalling_loss = signalling_loss
         self.target_entropy = torch.log(torch.tensor(self.output_alphabet_size))*0.1
 
     def forward(self, input, testing):
         # print(input)
-        print(input.shape)
+       # print(input.shape)
         x, hidden = self.encoder(input[:, :, :self.encoder.input_size]) # X: [BATCH SIZE, SEQ_LENGTH, HIDDEN_SIZE]
-        x = x[:, -1:, :] # Only interested in final hidden state.
-        turn_one_hot = F.one_hot((input[:, -1:, -1]).long(), num_classes=self.n_turns)
-        encoded = torch.concat((x, turn_one_hot), dim=2)  # Appending current turn at the end of hidden state
-        encoded = torch.repeat_interleave(encoded, self.output_length, 1) # Repeating input state output_length times
-
-        y, hidden = self.decoder(encoded)
-        y = self.fc(y)
-        y = F.softmax(y, 2) # [Batch, seq_len, letter]
+        # x = x[:, -1:, :] # Only interested in final hidden state.
+        # turn_one_hot = F.one_hot((input[:, -1:, -1]).long(), num_classes=self.n_turns)
+        # print(turn_one_hot.shape)
+        # encoded = torch.concat((x, turn_one_hot), dim=2)  # Appending current turn at the end of hidden state
+        # encoded = torch.repeat_interleave(encoded, self.output_length, 1) # Repeating input state output_length times
+        init_input = torch.zeros((len(input), 1, self.output_alphabet_size), device=device)
+        # init_input[:, :, 0:self.n_turns] = turn_one_hot
+        y = torch.zeros((len(input), self.output_length, self.output_alphabet_size), device=device)
+        out, hidden = self.decoder(init_input, hidden)
+        out = self.fc(out)
+        out = F.softmax(out, 2)
+        y[:, 0:1] = out
+        for j in range(self.output_length-1):
+            out, hidden = self.decoder(out, hidden)
+            out = self.fc(out)
+            out = F.softmax(out, 2)
+            y[:, j+1:j+2] = out
+         # [Batch, seq_len, letter]
+        # print(y.shape)
         if not testing:
             distributions = torch.distributions.Categorical(y)
             out = distributions.sample()

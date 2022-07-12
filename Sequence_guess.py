@@ -26,15 +26,16 @@ class SequenceState:
 
     def generate_processed_state(self):
         if self.curr_player == 0:
-            state = torch.zeros((self.batch_size, self.utt_seq_length, self.utt_alphabet_size + 1), dtype=torch.float, device=device)
-            state[:, :, :-1] = F.one_hot(self.utt, num_classes=self.utt_alphabet_size)
-            state[:, :, -1] = self.turn
+            state = torch.zeros((self.batch_size, self.utt_seq_length, self.utt_alphabet_size + self.max_turns + 1), dtype=torch.float, device=device)
+            state[:, :, -self.max_turns-1:-1] = F.one_hot(torch.tensor(self.turn, device=device), num_classes=self.max_turns)
+            state[:, :, -1] = self.turn/self.max_turns
         else:
-            state = torch.zeros((self.batch_size, self.guess_seq_length, 2*self.guess_alphabet_size + 1), dtype=torch.float,
+            state = torch.zeros((self.batch_size, self.guess_seq_length, 2*self.guess_alphabet_size + self.max_turns + 1), dtype=torch.float,
                                 device=device)
             state[:, :, :self.guess_alphabet_size] = F.one_hot(self.guess, num_classes=self.guess_alphabet_size)
-            state[:, :, self.guess_alphabet_size:-1] = F.one_hot(self.ans, num_classes=self.guess_alphabet_size)
-            state[:, :, -1] = self.turn
+            state[:, :, self.guess_alphabet_size:2*self.guess_alphabet_size] = F.one_hot(self.ans, num_classes=self.guess_alphabet_size)
+            state[:, :, -self.max_turns-1:-1] = F.one_hot(torch.tensor(self.turn, device=device), num_classes=self.max_turns)
+            state[:, :, -1] = self.turn/self.max_turns
         return state
 
 class SequenceGame:
